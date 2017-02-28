@@ -1,0 +1,99 @@
+html {
+    background: #292929;
+}
+a,
+#main-content a {
+    color: #0092d4;
+}
+#main-menu li a:hover,
+#main-menu li a:active,
+#main-menu a.active,
+#main-menu > ul > li > a.active-trail {
+    color: #005074;
+}
+h1#site-title {
+    font-size: 25px;
+    margin-top: 27px;
+}
+h1#site-title a:link,
+h1#site-title a:visited {
+    color: #58bb4b;
+}
+.blue {
+    color: #0092d4 !important;
+}
+#site-logo {
+    padding: 15px 7px 0 0;
+}
+.site-branding {
+    margin-bottom: 10px;
+}
+#preface-area {
+    background: #0092d4 none repeat scroll 0 0;
+    border-bottom: none;
+    border-top: none;
+    padding: 20px 0 10px;
+}
+.node h2.title a,
+h1.page-title {
+    color: #444;
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    margin-top: 10px;
+}
+#content .node-teaser,
+.tabs-wrapper {
+    border-bottom: 1px dashed #c1c1c1;
+}
+ul li.leaf {
+    list-style: none;
+}
+#sidebar .block > h2 {
+    color: #555;
+}
+.flex-caption {
+    /*background: rgba(0,0,0,.3);*/
+}
+.flex-caption h2,
+.flex-caption p  {
+    text-shadow: 1px 1px 1px rgba(0,0,0,.7);
+}
+.doverlay {
+    background: none;
+}
+#main-content ul.primary li a:hover, 
+#main-content ul.primary li a.active,
+#main-content table.support th a,
+#main-content table.tableheader-processed th a {
+    color: #fff;
+}
+#main-content table.table-select-processed td, 
+#main-content table.tableheader-processed td {
+    vertical-align:middle;
+}
+#support-page-form > div > a {
+    font-weight: bold;
+}
+#support-page-form > div > a:after {
+    content: ' +';
+} 
+#primary table.support {
+    margin-top: 10px;
+}
+.page-node #content-wrap th img {
+    border: none;
+    height: auto;
+    margin: 0 0 0 5px;
+    max-width: 97.4%;
+    padding: 0;
+}
+#comment-form label {
+    margin-right: 5px;
+}
+   
+tr.even {
+    background-color: #efefef;
+}tr.odd {
+    background-color: #fefefe;
+}
