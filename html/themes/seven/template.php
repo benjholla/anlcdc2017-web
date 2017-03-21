@@ -17,9 +17,11 @@ function seven_preprocess_maintenance_page(&$vars) {
  */
 function seven_preprocess_html(&$vars) {
   // Add conditional CSS for IE8 and below.
-  drupal_add_css(path_to_theme() . '/ie.css', array('group' => CSS_THEME, 'browsers' => array('IE' => 'lte IE 8', '!IE' => FALSE), 'preprocess' => FALSE));
+  drupal_add_css(path_to_theme() . '/ie.css', array('group' => CSS_THEME, 'browsers' => array('IE' => 'lte IE 8', '!IE' => FALSE), 'weight' => 999, 'preprocess' => FALSE));
+  // Add conditional CSS for IE7 and below.
+  drupal_add_css(path_to_theme() . '/ie7.css', array('group' => CSS_THEME, 'browsers' => array('IE' => 'lte IE 7', '!IE' => FALSE), 'weight' => 999, 'preprocess' => FALSE));
   // Add conditional CSS for IE6.
-  drupal_add_css(path_to_theme() . '/ie6.css', array('group' => CSS_THEME, 'browsers' => array('IE' => 'lt IE 7', '!IE' => FALSE), 'preprocess' => FALSE));
+  drupal_add_css(path_to_theme() . '/ie6.css', array('group' => CSS_THEME, 'browsers' => array('IE' => 'lte IE 6', '!IE' => FALSE), 'weight' => 999, 'preprocess' => FALSE));
 }
 
 /**
@@ -102,12 +104,15 @@ function seven_css_alter(&$css) {
   // Use Seven's vertical tabs style instead of the default one.
   if (isset($css['misc/vertical-tabs.css'])) {
     $css['misc/vertical-tabs.css']['data'] = drupal_get_path('theme', 'seven') . '/vertical-tabs.css';
+    $css['misc/vertical-tabs.css']['type'] = 'file';
   }
   if (isset($css['misc/vertical-tabs-rtl.css'])) {
     $css['misc/vertical-tabs-rtl.css']['data'] = drupal_get_path('theme', 'seven') . '/vertical-tabs-rtl.css';
+    $css['misc/vertical-tabs-rtl.css']['type'] = 'file';
   }
   // Use Seven's jQuery UI theme style instead of the default one.
   if (isset($css['misc/ui/jquery.ui.theme.css'])) {
     $css['misc/ui/jquery.ui.theme.css']['data'] = drupal_get_path('theme', 'seven') . '/jquery.ui.theme.css';
+    $css['misc/ui/jquery.ui.theme.css']['type'] = 'file';
   }
 }

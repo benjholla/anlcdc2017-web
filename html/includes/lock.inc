@@ -74,7 +74,10 @@ function lock_initialize() {
  * Helper function to get this request's unique id.
  */
 function _lock_id() {
-  $lock_id = &drupal_static(__FUNCTION__);
+  // Do not use drupal_static(). This identifier refers to the current
+  // client request, and must not be changed under any circumstances
+  // else the shutdown handler may fail to release our locks.
+  static $lock_id;
 
   if (!isset($lock_id)) {
     // Assign a unique id.
@@ -89,7 +92,7 @@ function _lock_id() {
  * Acquire (or renew) a lock, but do not block if it fails.
  *
  * @param $name
- *   The name of the lock.
+ *   The name of the lock. Limit of name's length is 255 characters.
  * @param $timeout
  *   A number of seconds (float) before the lock expires (minimum of 0.001).
  *

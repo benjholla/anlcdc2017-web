@@ -10,7 +10,7 @@
  */
 function search_reindex_confirm() {
   return confirm_form(array(), t('Are you sure you want to re-index the site?'),
-                  'admin/config/search/settings', t(' The search index is not cleared but systematically updated to reflect the new settings. Searching will continue to work but new content won\'t be indexed until all existing content has been re-indexed. This action cannot be undone.'), t('Re-index site'), t('Cancel'));
+                  'admin/config/search/settings', t('The search index is not cleared but systematically updated to reflect the new settings. Searching will continue to work but new content won\'t be indexed until all existing content has been re-indexed. This action cannot be undone.'), t('Re-index site'), t('Cancel'));
 }
 
 /**
@@ -95,7 +95,8 @@ function search_admin_settings($form) {
     '#default_value' => variable_get('minimum_word_size', 3),
     '#size' => 5,
     '#maxlength' => 3,
-    '#description' => t('The number of characters a word has to be to be indexed. A lower setting means better search result ranking, but also a larger database. Each search query must contain at least one keyword that is this size (or longer).')
+    '#description' => t('The number of characters a word has to be to be indexed. A lower setting means better search result ranking, but also a larger database. Each search query must contain at least one keyword that is this size (or longer).'),
+    '#element_validate' => array('element_validate_integer_positive'),
   );
   $form['indexing_settings']['overlap_cjk'] = array(
     '#type' => 'checkbox',
@@ -106,7 +107,7 @@ function search_admin_settings($form) {
 
   $form['active'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Active search modules ')
+    '#title' => t('Active search modules')
   );
   $module_options = _search_get_module_names();
   $form['active']['search_active_modules'] = array(
@@ -123,6 +124,16 @@ function search_admin_settings($form) {
     '#default_value' => variable_get('search_default_module', 'node'),
     '#options' => $module_options,
     '#description' => t('Choose which search module is the default.')
+  );
+  $form['logging'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Logging')
+  );
+  $form['logging']['search_logging'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Log searches'),
+    '#default_value' => variable_get('search_logging', 1),
+    '#description' => t('If checked, all searches will be logged. Uncheck to skip logging. Logging may affect performance.'),
   );
   $form['#validate'][] = 'search_admin_settings_validate';
   $form['#submit'][] = 'search_admin_settings_submit';
@@ -143,7 +154,7 @@ function search_admin_settings($form) {
  */
 function search_admin_settings_validate($form, &$form_state) {
   // Check whether we selected a valid default.
-  if ($form_state['clicked_button']['#value'] != t('Reset to defaults')) {
+  if ($form_state['triggering_element']['#value'] != t('Reset to defaults')) {
     $new_modules = array_filter($form_state['values']['search_active_modules']);
     $default = $form_state['values']['search_default_module'];
     if (!in_array($default, $new_modules, TRUE)) {
@@ -164,7 +175,7 @@ function search_admin_settings_submit($form, &$form_state) {
   }
   $current_modules = variable_get('search_active_modules', array('node', 'user'));
   // Check whether we are resetting the values.
-  if ($form_state['clicked_button']['#value'] == t('Reset to defaults')) {
+  if ($form_state['triggering_element']['#value'] == t('Reset to defaults')) {
     $new_modules = array('node', 'user');
   }
   else {

@@ -5,13 +5,14 @@ version = VERSION
 core = 7.x
 files[] = field.module
 files[] = field.attach.inc
+files[] = field.info.class.inc
 files[] = tests/field.test
 dependencies[] = field_sql_storage
 required = TRUE
 stylesheets[all][] = theme/field.css
 
-; Information added by drupal.org packaging script on 2011-07-27
-version = "7.5"
+; Information added by Drupal.org packaging script on 2017-02-01
+version = "7.54"
 project = "drupal"
-datestamp = "1311798415"
+datestamp = "1485986921"
 

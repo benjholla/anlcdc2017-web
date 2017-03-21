@@ -7,6 +7,27 @@ jQuery.noConflict();
 (function ($) {
 
 /**
+ * Override jQuery.fn.init to guard against XSS attacks.
+ *
+ * See http://bugs.jquery.com/ticket/9521
+ */
+var jquery_init = $.fn.init;
+$.fn.init = function (selector, context, rootjQuery) {
+  // If the string contains a "#" before a "<", treat it as invalid HTML.
+  if (selector && typeof selector === 'string') {
+    var hash_position = selector.indexOf('#');
+    if (hash_position >= 0) {
+      var bracket_position = selector.indexOf('<');
+      if (bracket_position > hash_position) {
+        throw 'Syntax error, unrecognized expression: ' + selector;
+      }
+    }
+  }
+  return jquery_init.call(this, selector, context, rootjQuery);
+};
+$.fn.init.prototype = jquery_init.prototype;
+
+/**
  * Attach all registered behaviors to a page element.
  *
  * Behaviors are event-triggered actions that attach to page elements, enhancing
@@ -111,6 +132,8 @@ Drupal.detachBehaviors = function (context, settings, trigger) {
 
 /**
  * Encode special characters in a plain-text string for display as HTML.
+ *
+ * @ingroup sanitization
  */
 Drupal.checkPlain = function (str) {
   var character, regex,
@@ -126,6 +149,45 @@ Drupal.checkPlain = function (str) {
 };
 
 /**
+ * Replace placeholders with sanitized values in a string.
+ *
+ * @param str
+ *   A string with placeholders.
+ * @param args
+ *   An object of replacements pairs to make. Incidences of any key in this
+ *   array are replaced with the corresponding value. Based on the first
+ *   character of the key, the value is escaped and/or themed:
+ *    - !variable: inserted as is
+ *    - @variable: escape plain text to HTML (Drupal.checkPlain)
+ *    - %variable: escape text and theme as a placeholder for user-submitted
+ *      content (checkPlain + Drupal.theme('placeholder'))
+ *
+ * @see Drupal.t()
+ * @ingroup sanitization
+ */
+Drupal.formatString = function(str, args) {
+  // Transform arguments before inserting them.
+  for (var key in args) {
+    switch (key.charAt(0)) {
+      // Escaped only.
+      case '@':
+        args[key] = Drupal.checkPlain(args[key]);
+      break;
+      // Pass-through.
+      case '!':
+        break;
+      // Escaped and placeholder.
+      case '%':
+      default:
+        args[key] = Drupal.theme('placeholder', args[key]);
+        break;
+    }
+    str = str.replace(key, args[key]);
+  }
+  return str;
+};
+
+/**
  * Translate strings to the page language or a given language.
  *
  * See the documentation of the server-side t() function for further details.
@@ -135,39 +197,26 @@ Drupal.checkPlain = function (str) {
  * @param args
  *   An object of replacements pairs to make after translation. Incidences
  *   of any key in this array are replaced with the corresponding value.
- *   Based on the first character of the key, the value is escaped and/or themed:
- *    - !variable: inserted as is
- *    - @variable: escape plain text to HTML (Drupal.checkPlain)
- *    - %variable: escape text and theme as a placeholder for user-submitted
- *      content (checkPlain + Drupal.theme('placeholder'))
+ *   See Drupal.formatString().
+ *
+ * @param options
+ *   - 'context' (defaults to the empty context): The context the source string
+ *     belongs to.
+ *
  * @return
  *   The translated string.
  */
-Drupal.t = function (str, args) {
+Drupal.t = function (str, args, options) {
+  options = options || {};
+  options.context = options.context || '';
+
   // Fetch the localized version of the string.
-  if (Drupal.locale.strings && Drupal.locale.strings[str]) {
-    str = Drupal.locale.strings[str];
+  if (Drupal.locale.strings && Drupal.locale.strings[options.context] && Drupal.locale.strings[options.context][str]) {
+    str = Drupal.locale.strings[options.context][str];
   }
 
   if (args) {
-    // Transform arguments before inserting them.
-    for (var key in args) {
-      switch (key.charAt(0)) {
-        // Escaped only.
-        case '@':
-          args[key] = Drupal.checkPlain(args[key]);
-        break;
-        // Pass-through.
-        case '!':
-          break;
-        // Escaped and placeholder.
-        case '%':
-        default:
-          args[key] = Drupal.theme('placeholder', args[key]);
-          break;
-      }
-      str = str.replace(key, args[key]);
-    }
+    str = Drupal.formatString(str, args);
   }
   return str;
 };
@@ -193,33 +242,97 @@ Drupal.t = function (str, args) {
  * @param args
  *   An object of replacements pairs to make after translation. Incidences
  *   of any key in this array are replaced with the corresponding value.
- *   Based on the first character of the key, the value is escaped and/or themed:
- *    - !variable: inserted as is
- *    - @variable: escape plain text to HTML (Drupal.checkPlain)
- *    - %variable: escape text and theme as a placeholder for user-submitted
- *      content (checkPlain + Drupal.theme('placeholder'))
+ *   See Drupal.formatString().
  *   Note that you do not need to include @count in this array.
  *   This replacement is done automatically for the plural case.
+ * @param options
+ *   The options to pass to the Drupal.t() function.
  * @return
  *   A translated string.
  */
-Drupal.formatPlural = function (count, singular, plural, args) {
+Drupal.formatPlural = function (count, singular, plural, args, options) {
   var args = args || {};
   args['@count'] = count;
   // Determine the index of the plural form.
   var index = Drupal.locale.pluralFormula ? Drupal.locale.pluralFormula(args['@count']) : ((args['@count'] == 1) ? 0 : 1);
 
   if (index == 0) {
-    return Drupal.t(singular, args);
+    return Drupal.t(singular, args, options);
   }
   else if (index == 1) {
-    return Drupal.t(plural, args);
+    return Drupal.t(plural, args, options);
   }
   else {
     args['@count[' + index + ']'] = args['@count'];
     delete args['@count'];
-    return Drupal.t(plural.replace('@count', '@count[' + index + ']'), args);
+    return Drupal.t(plural.replace('@count', '@count[' + index + ']'), args, options);
   }
+};
+
+/**
+ * Returns the passed in URL as an absolute URL.
+ *
+ * @param url
+ *   The URL string to be normalized to an absolute URL.
+ *
+ * @return
+ *   The normalized, absolute URL.
+ *
+ * @see https://github.com/angular/angular.js/blob/v1.4.4/src/ng/urlUtils.js
+ * @see https://grack.com/blog/2009/11/17/absolutizing-url-in-javascript
+ * @see https://github.com/jquery/jquery-ui/blob/1.11.4/ui/tabs.js#L53
+ */
+Drupal.absoluteUrl = function (url) {
+  var urlParsingNode = document.createElement('a');
+
+  // Decode the URL first; this is required by IE <= 6. Decoding non-UTF-8
+  // strings may throw an exception.
+  try {
+    url = decodeURIComponent(url);
+  } catch (e) {}
+
+  urlParsingNode.setAttribute('href', url);
+
+  // IE <= 7 normalizes the URL when assigned to the anchor node similar to
+  // the other browsers.
+  return urlParsingNode.cloneNode(false).href;
+};
+
+/**
+ * Returns true if the URL is within Drupal's base path.
+ *
+ * @param url
+ *   The URL string to be tested.
+ *
+ * @return
+ *   Boolean true if local.
+ *
+ * @see https://github.com/jquery/jquery-ui/blob/1.11.4/ui/tabs.js#L58
+ */
+Drupal.urlIsLocal = function (url) {
+  // Always use browser-derived absolute URLs in the comparison, to avoid
+  // attempts to break out of the base path using directory traversal.
+  var absoluteUrl = Drupal.absoluteUrl(url);
+  var protocol = location.protocol;
+
+  // Consider URLs that match this site's base URL but use HTTPS instead of HTTP
+  // as local as well.
+  if (protocol === 'http:' && absoluteUrl.indexOf('https:') === 0) {
+    protocol = 'https:';
+  }
+  var baseUrl = protocol + '//' + location.host + Drupal.settings.basePath.slice(0, -1);
+
+  // Decoding non-UTF-8 strings may throw an exception.
+  try {
+    absoluteUrl = decodeURIComponent(absoluteUrl);
+  } catch (e) {}
+  try {
+    baseUrl = decodeURIComponent(baseUrl);
+  } catch (e) {}
+
+  // The given URL matches the site's base URL, or has a path under the site's
+  // base URL.
+  return absoluteUrl === baseUrl || absoluteUrl.indexOf(baseUrl + '/') === 0;
 };
 
 /**
@@ -301,9 +414,32 @@ Drupal.getSelection = function (element) {
 };
 
 /**
+ * Add a global variable which determines if the window is being unloaded.
+ *
+ * This is primarily used by Drupal.displayAjaxError().
+ */
+Drupal.beforeUnloadCalled = false;
+$(window).bind('beforeunload pagehide', function () {
+    Drupal.beforeUnloadCalled = true;
+});
+
+/**
+ * Displays a JavaScript error from an Ajax response when appropriate to do so.
+ */
+Drupal.displayAjaxError = function (message) {
+  // Skip displaying the message if the user deliberately aborted (for example,
+  // by reloading the page or navigating to a different page) while the Ajax
+  // request was still ongoing. See, for example, the discussion at
+  // http://stackoverflow.com/questions/699941/handle-ajax-error-when-a-user-clicks-refresh.
+  if (!Drupal.beforeUnloadCalled) {
+    alert(message);
+  }
+};
+
+/**
  * Build an error message from an Ajax response.
  */
-Drupal.ajaxError = function (xmlhttp, uri) {
+Drupal.ajaxError = function (xmlhttp, uri, customMessage) {
   var statusCode, statusText, pathText, responseText, readyStateText, message;
   if (xmlhttp.status) {
     statusCode = "\n" + Drupal.t("An AJAX HTTP error occurred.") +  "\n" + Drupal.t("HTTP Result Code: !status", {'!status': xmlhttp.status});
@@ -336,7 +472,10 @@ Drupal.ajaxError = function (xmlhttp, uri) {
   // We don't need readyState except for status == 0.
   readyStateText = xmlhttp.status == 0 ? ("\n" + Drupal.t("ReadyState: !readyState", {'!readyState': xmlhttp.readyState})) : "";
 
-  message = statusCode + pathText + statusText + responseText + readyStateText;
+  // Additional message beyond what the xmlhttp object provides.
+  customMessage = customMessage ? ("\n" + Drupal.t("CustomMessage: !customMessage", {'!customMessage': customMessage})) : "";
+
+  message = statusCode + pathText + statusText + customMessage + responseText + readyStateText;
   return message;
 };
 

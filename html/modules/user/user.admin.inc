@@ -5,6 +5,21 @@
  * Admin page callback file for the user module.
  */
 
+/**
+ * Page callback: Generates the appropriate user administration form.
+ *
+ * This function generates the user registration, multiple user cancellation,
+ * or filtered user list admin form, depending on the argument and the POST
+ * form values.
+ *
+ * @param string $callback_arg
+ *   (optional) Indicates which form to build. Defaults to '', which will
+ *   trigger the user filter form. If the POST value 'op' is present, this
+ *   function uses that value as the callback argument.
+ *
+ * @return string
+ *   A renderable form array for the respective request.
+ */
 function user_admin($callback_arg = '') {
   $op = isset($_POST['op']) ? $_POST['op'] : $callback_arg;
 
@@ -391,7 +406,7 @@ function user_admin_settings() {
     $form['personalization']['pictures']['settings']['user_picture_style'] = array(
       '#type' => 'select',
       '#title' => t('Picture display style'),
-      '#options' => image_style_options(TRUE),
+      '#options' => image_style_options(TRUE, PASS_THROUGH),
       '#default_value' => variable_get('user_picture_style', ''),
       '#description' => t('The style selected will be used on display, while the original image is retained. Styles may be configured in the <a href="!url">Image styles</a> administration area.', array('!url' => url('admin/config/media/image-styles'))),
     );
@@ -413,6 +428,7 @@ function user_admin_settings() {
     '#maxlength' => 10,
     '#field_suffix' => ' ' . t('KB'),
     '#description' => t('Maximum allowed file size for uploaded pictures. Upload size is normally limited only by the PHP maximum post and file upload settings, and images are automatically scaled down to the dimensions specified above.'),
+    '#element_validate' => array('element_validate_integer_positive'),
   );
   $form['personalization']['pictures']['user_picture_guidelines'] = array(
     '#type' => 'textarea',
@@ -712,7 +728,12 @@ function user_admin_permissions($form, $form_state, $rid = NULL) {
 
   // Have to build checkboxes here after checkbox arrays are built
   foreach ($role_names as $rid => $name) {
-    $form['checkboxes'][$rid] = array('#type' => 'checkboxes', '#options' => $options, '#default_value' => isset($status[$rid]) ? $status[$rid] : array());
+    $form['checkboxes'][$rid] = array(
+      '#type' => 'checkboxes',
+      '#options' => $options,
+      '#default_value' => isset($status[$rid]) ? $status[$rid] : array(),
+      '#attributes' => array('class' => array('rid-' . $rid)),
+    );
     $form['role_names'][$rid] = array('#markup' => check_plain($name), '#tree' => TRUE);
   }
 
@@ -836,7 +857,7 @@ function user_admin_roles($form, $form_state) {
     $form['roles'][$rid]['#weight'] = $order;
     $form['roles'][$rid]['weight'] = array(
       '#type' => 'textfield',
-      '#title' => t('Weight for @title', array('@title' => $name['label'])),
+      '#title' => t('Weight for @title', array('@title' => $name)),
       '#title_display' => 'invisible',
       '#size' => 4,
       '#default_value' => $order,

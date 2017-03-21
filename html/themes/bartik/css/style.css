@@ -53,7 +53,7 @@ kbd,
 samp,
 var {
   padding: 0 0.4em;
-  font-size: 0.77em;
+  font-size: 0.857em;
   font-family: Menlo, Consolas, "Andale Mono", "Lucida Console", "Nimbus Mono L", "DejaVu Sans Mono", monospace, "Courier New";
 }
 code {
@@ -459,10 +459,6 @@ h1#site-name {
 #main-menu {
   clear: both;
 }
-#main-menu-links a {
-  color: #d9d9d9;
-  padding: 0.6em 1em 0.4em;
-}
 #main-menu-links {
   font-size: 0.929em;
   margin: 0;
@@ -708,7 +704,6 @@ ul.links {
 }
 .comment .submitted .comment-permalink {
   font-size: 0.786em;
-  text-transform: lowercase;
 }
 .comment .content {
   font-size: 0.929em;
@@ -1330,14 +1325,6 @@ input.form-button-disabled:active,
   color: #717171;
 }
 
-/* Animated throbber */
-html.js input.form-autocomplete {
-  background-position: 100% 4px; /* LTR */
-}
-html.js input.throbbing {
-  background-position: 100% -16px; /* LTR */
-}
-
 /* Comment form */
 .comment-form label {
   float: left; /* LTR */
@@ -1435,9 +1422,6 @@ div.password-suggestions {
 div.vertical-tabs .vertical-tabs-panes fieldset.vertical-tabs-pane {
   padding: 1em;
 }
-#forum tr td.forum {
-  padding-left: 35px;
-}
 #forum .name {
   font-size: 1.083em;
 }
@@ -1495,7 +1479,7 @@ ol.search-results {
 }
 .search-results li:last-child {
   border-bottom: none;
-  padding-bottom: none;
+  padding-bottom: 0;
   margin-bottom: 1em;
 }
 .search-results .search-snippet-info {

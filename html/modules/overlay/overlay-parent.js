@@ -1,3 +1,7 @@
+/**
+ * @file
+ * Attaches the behaviors for the Overlay parent pages.
+ */
 
 (function ($) {
 
@@ -334,25 +338,34 @@ Drupal.overlay.setFocusBefore = function ($element, document) {
   $placeholder.one('blur', function () {
     $(this).remove();
   });
-}
+};
 
 /**
  * Check if the given link is in the administrative section of the site.
  *
  * @param url
- *   The url to be tested.
+ *   The URL to be tested.
  *
  * @return boolean
  *   TRUE if the URL represents an administrative link, FALSE otherwise.
  */
 Drupal.overlay.isAdminLink = function (url) {
+  if (!Drupal.urlIsLocal(url)) {
+    return false;
+  }
+
   var path = this.getPath(url);
 
   // Turn the list of administrative paths into a regular expression.
   if (!this.adminPathRegExp) {
-    var regExpPrefix = '^' + Drupal.settings.pathPrefix + '(';
-    var adminPaths = regExpPrefix + Drupal.settings.overlay.paths.admin.replace(/\s+/g, ')$|' + regExpPrefix) + ')$';
-    var nonAdminPaths = regExpPrefix + Drupal.settings.overlay.paths.non_admin.replace(/\s+/g, ')$|'+ regExpPrefix) + ')$';
+    var prefix = '';
+    if (Drupal.settings.overlay.pathPrefixes.length) {
+      // Allow path prefixes used for language negatiation followed by slash,
+      // and the empty string.
+      prefix = '(' + Drupal.settings.overlay.pathPrefixes.join('/|') + '/|)';
+    }
+    var adminPaths = '^' + prefix + '(' + Drupal.settings.overlay.paths.admin.replace(/\s+/g, '|') + ')$';
+    var nonAdminPaths = '^' + prefix + '(' + Drupal.settings.overlay.paths.non_admin.replace(/\s+/g, '|') + ')$';
     adminPaths = adminPaths.replace(/\*/g, '.*');
     nonAdminPaths = nonAdminPaths.replace(/\*/g, '.*');
     this.adminPathRegExp = new RegExp(adminPaths);
@@ -360,6 +373,42 @@ Drupal.overlay.isAdminLink = function (url) {
   }
 
   return this.adminPathRegExp.exec(path) && !this.nonAdminPathRegExp.exec(path);
+};
+
+/**
+ * Determine whether a link is external to the site.
+ *
+ * Deprecated. Use Drupal.urlIsLocal() instead.
+ *
+ * @param url
+ *   The URL to be tested.
+ *
+ * @return boolean
+ *   TRUE if the URL is external to the site, FALSE otherwise.
+ */
+Drupal.overlay.isExternalLink = function (url) {
+  return !Drupal.urlIsLocal(url);
+};
+
+/**
+ * Constructs an internal URL (relative to this site) from the provided path.
+ *
+ * For example, if the provided path is 'admin' and the site is installed at
+ * http://example.com/drupal, this function will return '/drupal/admin'.
+ *
+ * @param path
+ *   The internal path, without any leading slash.
+ *
+ * @return
+ *   The internal URL derived from the provided path, or null if a valid
+ *   internal path cannot be constructed (for example, if an attempt to create
+ *   an external link is detected).
+ */
+Drupal.overlay.getInternalUrl = function (path) {
+  var url = Drupal.settings.basePath + path;
+  if (Drupal.urlIsLocal(url)) {
+    return url;
+  }
 };
 
 /**
@@ -413,6 +462,27 @@ Drupal.overlay.eventhandlerAlterDisplacedElements = function (event) {
   // IE6 doesn't support maxWidth, use width instead.
   var maxWidthName = (typeof document.body.style.maxWidth == 'string') ? 'maxWidth' : 'width';
 
+  if (Drupal.overlay.leftSidedScrollbarOffset === undefined && $(document.documentElement).attr('dir') === 'rtl') {
+    // We can't use element.clientLeft to detect whether scrollbars are placed
+    // on the left side of the element when direction is set to "rtl" as most
+    // browsers dont't support it correctly.
+    // http://www.gtalbot.org/BugzillaSection/DocumentAllDHTMLproperties.html
+    // There seems to be absolutely no way to detect whether the scrollbar
+    // is on the left side in Opera; always expect scrollbar to be on the left.
+    if ($.browser.opera) {
+      Drupal.overlay.leftSidedScrollbarOffset = document.documentElement.clientWidth - this.iframeWindow.document.documentElement.clientWidth + this.iframeWindow.document.documentElement.clientLeft;
+    }
+    else if (this.iframeWindow.document.documentElement.clientLeft) {
+      Drupal.overlay.leftSidedScrollbarOffset = this.iframeWindow.document.documentElement.clientLeft;
+    }
+    else {
+      var el1 = $('<div style="direction: rtl; overflow: scroll;"></div>').appendTo(document.body);
+      var el2 = $('<div></div>').appendTo(el1);
+      Drupal.overlay.leftSidedScrollbarOffset = parseInt(el2[0].offsetLeft - el1[0].offsetLeft);
+      el1.remove();
+    }
+  }
+
   // Consider any element that should be visible above the overlay (such as
   // a toolbar).
   $('.overlay-displace-top, .overlay-displace-bottom').each(function () {
@@ -421,6 +491,10 @@ Drupal.overlay.eventhandlerAlterDisplacedElements = function (event) {
     // In IE, Shadow filter makes element to overlap the scrollbar with 1px.
     if (this.filters && this.filters.length && this.filters.item('DXImageTransform.Microsoft.Shadow')) {
       maxWidth -= 1;
+    }
+
+    if (Drupal.overlay.leftSidedScrollbarOffset) {
+      $(this).css('left', Drupal.overlay.leftSidedScrollbarOffset);
     }
 
     // Prevent displaced elements overlapping window's scrollbar.
@@ -435,7 +509,12 @@ Drupal.overlay.eventhandlerAlterDisplacedElements = function (event) {
     var offset = $(this).offset();
     var offsetRight = offset.left + $(this).outerWidth();
     if ((data.drupalOverlay && data.drupalOverlay.clip) || offsetRight > maxWidth) {
-      $(this).css('clip', 'rect(auto, ' + (maxWidth - offset.left) + 'px, ' + (documentHeight - offset.top) + 'px, auto)');
+      if (Drupal.overlay.leftSidedScrollbarOffset) {
+        $(this).css('clip', 'rect(auto, auto, ' + (documentHeight - offset.top) + 'px, ' + (Drupal.overlay.leftSidedScrollbarOffset + 2) + 'px)');
+      }
+      else {
+        $(this).css('clip', 'rect(auto, ' + (maxWidth - offset.left) + 'px, ' + (documentHeight - offset.top) + 'px, auto)');
+      }
       (data.drupalOverlay = data.drupalOverlay || {}).clip = true;
     }
   });
@@ -508,7 +587,7 @@ Drupal.overlay.eventhandlerOverrideLink = function (event) {
 
   var target = $target[0];
   var href = target.href;
-  // Only handle links that have an href attribute and use the http(s) protocol.
+  // Only handle links that have an href attribute and use the HTTP(S) protocol.
   if (href != undefined && href != '' && target.protocol.match(/^https?\:/)) {
     var anchor = href.replace(target.ownerDocument.location.href, '');
     // Skip anchor links.
@@ -520,7 +599,7 @@ Drupal.overlay.eventhandlerOverrideLink = function (event) {
       // If the link contains the overlay-restore class and the overlay-context
       // state is set, also update the parent window's location.
       var parentLocation = ($target.hasClass('overlay-restore') && typeof $.bbq.getState('overlay-context') == 'string')
-        ? Drupal.settings.basePath + $.bbq.getState('overlay-context')
+        ? this.getInternalUrl($.bbq.getState('overlay-context'))
         : null;
       href = this.fragmentizeLink($target.get(0), parentLocation);
       // Only override default behavior when left-clicking and user is not
@@ -555,7 +634,14 @@ Drupal.overlay.eventhandlerOverrideLink = function (event) {
       else {
         // Add the overlay-context state to the link, so "overlay-restore" links
         // can restore the context.
-        $target.attr('href', $.param.fragment(href, { 'overlay-context': this.getPath(window.location) + window.location.search }));
+        if ($target[0].hash) {
+          // Leave links with an existing fragment alone. Adding an extra
+          // parameter to a link like "node/1#section-1" breaks the link.
+        }
+        else {
+          // For links with no existing fragment, add the overlay context.
+          $target.attr('href', $.param.fragment(href, { 'overlay-context': this.getPath(window.location) + window.location.search }));
+        }
 
         // When the link has a destination query parameter and that destination
         // is an admin link we need to fragmentize it. This will make it reopen
@@ -566,8 +652,11 @@ Drupal.overlay.eventhandlerOverrideLink = function (event) {
           $target.attr('href', $.param.querystring(href, { destination: fragmentizedDestination }));
         }
 
-        // Make the link open in the immediate parent of the frame.
-        $target.attr('target', '_parent');
+        // Make the link open in the immediate parent of the frame, unless the
+        // link already has a different target.
+        if (!$target.attr('target')) {
+          $target.attr('target', '_parent');
+        }
       }
     }
   }
@@ -590,11 +679,15 @@ Drupal.overlay.eventhandlerOperateByURLFragment = function (event) {
   }
 
   // Get the overlay URL from the current URL fragment.
+  var internalUrl = null;
   var state = $.bbq.getState('overlay');
   if (state) {
+    internalUrl = this.getInternalUrl(state);
+  }
+  if (internalUrl) {
     // Append render variable, so the server side can choose the right
     // rendering and add child frame code to the page if needed.
-    var url = $.param.querystring(Drupal.settings.basePath + state, { render: 'overlay' });
+    var url = $.param.querystring(internalUrl, { render: 'overlay' });
 
     this.open(url);
     this.resetActiveClass(this.getPath(Drupal.settings.basePath + state));
@@ -808,8 +901,13 @@ Drupal.overlay.getDisplacement = function (region) {
   if (lastDisplaced.length) {
     displacement = lastDisplaced.offset().top + lastDisplaced.outerHeight();
 
-    // Remove height added by IE Shadow filter.
-    if (lastDisplaced[0].filters && lastDisplaced[0].filters.length && lastDisplaced[0].filters.item('DXImageTransform.Microsoft.Shadow')) {
+    // In modern browsers (including IE9), when box-shadow is defined, use the
+    // normal height.
+    var cssBoxShadowValue = lastDisplaced.css('box-shadow');
+    var boxShadow = (typeof cssBoxShadowValue !== 'undefined' && cssBoxShadowValue !== 'none');
+    // In IE8 and below, we use the shadow filter to apply box-shadow styles to
+    // the toolbar. It adds some extra height that we need to remove.
+    if (!boxShadow && /DXImageTransform\.Microsoft\.Shadow/.test(lastDisplaced.css('filter'))) {
       displacement -= lastDisplaced[0].filters.item('DXImageTransform.Microsoft.Shadow').strength;
       displacement = Math.max(0, displacement);
     }
@@ -913,7 +1011,7 @@ Drupal.overlay._recordTabindex = function () {
   var $element = $(this);
   var tabindex = $(this).attr('tabindex');
   $element.data('drupalOverlayOriginalTabIndex', tabindex);
-}
+};
 
 /**
  * Restore an element's original tabindex.
