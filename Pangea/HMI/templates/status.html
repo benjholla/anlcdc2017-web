@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <section class="jumbotron text-xs-center">
+        <div class="container">
+            <h1>Pangea Power and Water Status Pange</h1>
+
+            <p class="text-muted">This status page is for our valued customers to see the status of our water and power
+                systems </p>
+            <div>
+                {% if wON %}
+                    <p> Water systems are operating at max efficiency </p>
+                {% else %}
+                    <p> Water systems are currently not operating</p>
+                {% endif %}
+                {% if pON %}
+                    <p> Power systems are operating at max efficiency </p>
+                {% else %}
+                    <p> Power systems are currently not operating</p>
+                {% endif %}
+
+            </div>
+        </div>
+    </section>
+
+{% endblock content %}

@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <section class="jumbotron text-xs-center">
+        <div class="container">
+            <h3>Kill Switch</h3>
+            {% if message %}
+                {% if message['status'] == 'Success' %}
+                    <div class="alert alert-success" role="alert">
+                        <strong>{{ message['status'] }}</strong> {{ message['message'] }}
+                    </div>
+                {% elif message['status'] == 'Danger' %}
+                    <div class="alert alert-danger" role="alert">
+                        <strong>{{ message['status'] }}</strong> {{ message['message'] }}
+                    </div>
+                {% endif %}
+            {% endif %}
+            <p class="text-muted"> The kill switch will shut off all power and water</p>
+            <a href="/killswitch/on" class="btn btn-danger">KILL SWITCH</a>
+        </div>
+    </section>
+
+{% endblock content %}

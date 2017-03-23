@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <section class="jumbotron text-xs-center">
+        <div class="container">
+            <h1>Pangea Power and Water Control System</h1>
+            <div class="alert alert-danger" role="alert">
+                <strong>Warning</strong> This is a Federal computer system and is the property of the Continent of
+                Pangea Government. It is for authorized use only. <br> Unauthorized or improper use of this system
+                may result in administrative disciplinary action and civil and criminal penalties. By continuing to
+                use this system you indicate your awareness of and consent to these terms and conditions of use. GET
+                OFF IMMEDIATELY if you do not agree to the conditions stated in this warning.
+            </div>
+            <p class="h3">Welcome to Pangea power and water </p>
+            <div>
+                <p>This system is for Pangea technicians to manage, maintain and control all of the our nations
+                    critical infrastructure </p>
+
+            </div>
+            <a href="/water" class="btn btn-primary">Manage Water</a>
+            <a href="/power" class="btn btn-primary">Manage Power</a>
+
+        </div>
+    </section>
+
+{% endblock content %}
