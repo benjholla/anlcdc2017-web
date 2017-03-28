@@ -1,8 +1,34 @@
-#!/usr/bin/python3
 ##import RPi.GPIO as GPIO
-from flask import Flask, render_template
 
+from flask import Flask, render_template, Response, redirect, url_for, request, session, abort
+from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user
+
+## app config
 app = Flask(__name__)
+app.secret_key = 'FF8AAF4701FECF49B92DB6985CA2F67BF34E7B41'
+
+# flask-login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
+
+# silly user model
+class User(UserMixin):
+    def __init__(self, id):
+        self.id = id
+        self.name = "user" + str(id)
+        self.password = self.name + "_secret"
+    def __repr__(self):
+        return "%d/%s/%s" % (self.id, self.name, self.password)
+
+# create some users with ids 1 to 20       
+users = [User(id) for id in range(1, 21)]
+
+    
+# callback to reload the user object        
+@login_manager.user_loader
+def load_user(userid):
+    return User(userid)
 
 # Initiate GPIO
 ##GPIO.setmode(GPIO.BCM)
@@ -32,20 +58,6 @@ ksON = False
 ##    GPIO.setup(pin, GPIO.OUT)
 ##    GPIO.output(pin, GPIO.LOW)
 
-
-# HMI Dash/Home page
-@app.route('/')
-def hmi():
-    return render_template('home.html')
-
-
-# Water service HMI
-@app.route('/water')
-def water():
-    global wON
-    return render_template('PangeaWater.html', wON=wON)
-
-
 # Function to turn Water service On and OFF
 def water_on():
     global wON
@@ -67,28 +79,6 @@ def water_off():
         print(message)
         return message
     return None
-
-
-@app.route('/water/won')
-def WaterOn():
-    global wON
-    message = water_on()
-    return render_template('PangeaWater.html', wON=wON, message=message)
-
-
-@app.route('/water/woff')
-def WaterOff():
-    global wON
-    message = water_off()
-    return render_template('PangeaWater.html', wON=wON, message=message)
-
-
-# Power service HMI
-@app.route('/power')
-def power():
-    global pON
-    return render_template('PangeaPnE.html', pON=pON)
-
 
 # Function to turn Power service ON and OFF
 def power_on():
@@ -112,34 +102,106 @@ def power_off():
         return message
     return None
 
+# error handlers
+@app.errorhandler(401)
+def page_not_found(e):
+    return Response('<p>Login failed</p>')
 
-@app.route('/power/pon')
+@app.errorhandler(404)
+def page_not_found(e):
+    return Response('<p>Page not found</p>')
+
+@app.errorhandler(500)
+def page_not_found(e):
+    return Response('<p>Server error</p>')
+
+# HMI Dash/Home page
+@app.route('/')
+def hmi():
+    return render_template('home.html')
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']        
+        if password == username + "_secret":
+            id = username.split('user')[1]
+            user = User(id)
+            login_user(user)
+            return redirect(request.args.get("next"))
+        else:
+            return abort(401)
+    else:
+        return Response('''
+        <form action="" method="post">
+            <p><input type=text name=username>
+            <p><input type=password name=password>
+            <p><input type=submit value=Login>
+        </form>
+        ''')
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return Response('<p>Logged out</p>')
+
+# Water service HMI
+@app.route('/water')
+@login_required
+def water():
+    global wON
+    return render_template('PangeaWater.html', wON=wON)
+
+@app.route('/water/on')
+@login_required
+def WaterOn():
+    global wON
+    message = water_on()
+    return render_template('PangeaWater.html', wON=wON, message=message)
+
+@app.route('/water/off')
+@login_required
+def WaterOff():
+    global wON
+    message = water_off()
+    return render_template('PangeaWater.html', wON=wON, message=message)
+
+# Power service HMI
+@app.route('/power')
+@login_required
+def power():
+    global pON
+    return render_template('PangeaPnE.html', pON=pON)
+
+@app.route('/power/on')
+@login_required
 def poweron():
     global pON
     message = power_on()
     return render_template('PangeaPnE.html', pON=pON, message=message)
 
-
-@app.route('/power/poff')
+@app.route('/power/off')
+@login_required
 def poweroff():
     global pON
     message = power_off()
     return render_template('PangeaPnE.html', pON=pON, message=message)
 
-
 # Kill Switch HMI
 @app.route('/killswitch')
+@login_required
 def killswitch():
     return render_template('KillSwitch.html')
 
-
 @app.route('/killswitch/on')
+@login_required
 def killswitchon():
     global ksON
     ksON = True
     message = KillSwitch()
     return render_template('KillSwitch.html', message=message)
-
 
 # Function to turn on Kill Switch to all services
 def KillSwitch():
@@ -164,13 +226,11 @@ def KillSwitch():
         return message
     return None
 
-
 @app.route('/status')
 def status():
     global pON
     global wON
     return render_template('status.html', pON=pON, wON=wON)
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port='8080')
