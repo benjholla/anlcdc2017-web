@@ -1,4 +1,4 @@
-import RPi.GPIO as GPIO
+##import RPi.GPIO as GPIO
 
 import flask
 from flask import Flask, Response, render_template, redirect, url_for, escape, request, session, abort
@@ -30,7 +30,7 @@ WATER_TECH_ROLE = "water_tech"
 POWER_TECH_ROLE = "power_tech"
 
 # Initiate GPIO
-GPIO.setmode(GPIO.BCM)
+##GPIO.setmode(GPIO.BCM)
 
 # Correlate GPIO pins to sevices
 WaterPins = [17]
@@ -48,20 +48,20 @@ pON = True
 ksON = False
 
 # Start Water service
-for pin in WaterPins:
-    GPIO.setup(pin, GPIO.OUT)
-    GPIO.output(pin, GPIO.LOW)
+##for pin in WaterPins:
+##    GPIO.setup(pin, GPIO.OUT)
+##    GPIO.output(pin, GPIO.LOW)
 
 # Start Power service
-for pin in PowerPins:
-    GPIO.setup(pin, GPIO.OUT)
-    GPIO.output(pin, GPIO.LOW)
+##for pin in PowerPins:
+##    GPIO.setup(pin, GPIO.OUT)
+##    GPIO.output(pin, GPIO.LOW)
 
 # Function to turn Water service On and OFF
 def water_on():
     global wON
     if not wON:
-        GPIO.output(WaterPins, GPIO.HIGH)
+##        GPIO.output(WaterPins, GPIO.HIGH)
         wON = True
         message = "Service: Water has been turned ON"
         print(message)
@@ -71,7 +71,7 @@ def water_on():
 def water_off():
     global wON
     if wON:
-        GPIO.output(WaterPins, GPIO.LOW)
+##        GPIO.output(WaterPins, GPIO.LOW)
         wON = False
         message = "Service: Water has been turned OFF"
         print(message)
@@ -82,7 +82,7 @@ def water_off():
 def power_on():
     global pON
     if not pON:
-        GPIO.output(PowerPins, GPIO.HIGH)
+##        GPIO.output(PowerPins, GPIO.HIGH)
         pON = True
         message = "Service: Power has been turned ON"
         print(message)
@@ -92,7 +92,7 @@ def power_on():
 def power_off():
     global pON
     if pON:
-        GPIO.output(PowerPins, GPIO.LOW)
+##        GPIO.output(PowerPins, GPIO.LOW)
         pON = False
         message = "Service: Power has been turned OFF"
         print(message)
@@ -107,8 +107,8 @@ def KillSwitch():
         global pON
         message = {}
         if wON or pON:
-            GPIO.output(WaterPins, GPIO.LOW)
-            GPIO.output(PowerPins, GPIO.LOW)
+##            GPIO.output(WaterPins, GPIO.LOW)
+##            GPIO.output(PowerPins, GPIO.LOW)
             wON = False
             pON = False
             message['status'] = 'Success'
