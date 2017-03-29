@@ -3,7 +3,7 @@
 This application runs on a Raspberry Pi simulating a water pump and power grid. To test locally run the `HMI_no_gpio.py` version.
 
 ## Startup
-Run the application with the `python HMY.py` command.
+Run the application with the `python HMY.py` command. Note the user that runs the app will need to be in the `gpio` user group. Example: for the `pi` user could be `sudo adduser pi gpio`.
 
 ## Mock LDAP
 To swap out the LDAP implementation with a locally mocked password hashed backed implementation rename and replace the `ldap_mock_auth.py` file to `ldap_auth.py`.
