@@ -5,7 +5,7 @@ This repository contains Iowa State Universities secured code for the CDC web ap
 - ~~[fwaf](https://github.com/benjholla/fwaf) Web application firewall integration~~ (not enough time)
 
 ## Deployment
-This would open port 8080 and map the port 80 in the docker image to the host machines port 8080. Do `-p 80:80` do host on port 80.
+This would open port 8080 and map the port 80 in the docker image to the host machines port 8080. Do `-p 80:80` do host on port 80. The `-v` adds the volumes of the SAMBA mounts.
 
 - `sudo docker run -v /var/www/html/IT:/var/www/html/IT -v /var/www/html/SAMBA_share:/var/www/html/SAMBA_share -p 8080:80 benjholla/anlcdc2017-web`
 
