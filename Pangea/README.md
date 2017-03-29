@@ -1,6 +1,6 @@
 # Argonne National Labs 2017 Cyber Defense Competition HMI Web Application
 
-This application runs on a Raspberry Pi simulating a water pump and power grid. To test locally run the `HMI\_no\_gpio.py` version.
+This application runs on a Raspberry Pi simulating a water pump and power grid. To test locally run the `HMI_no_gpio.py` version.
 
 ## Dependencies:
 
