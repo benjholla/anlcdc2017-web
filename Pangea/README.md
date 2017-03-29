@@ -5,6 +5,9 @@ This application runs on a Raspberry Pi simulating a water pump and power grid. 
 ## Startup
 Run the application with the `python HMY.py` command.
 
+## Mock LDAP
+To swap out the LDAP implementation with a locally mocked password hashed backed implementation rename and replace the `ldap_mock_auth.py` file to `ldap_auth.py`.
+
 ## Dependencies:
 
 - `sudo apt-get install python3`
