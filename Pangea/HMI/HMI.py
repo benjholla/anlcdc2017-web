@@ -1,34 +1,46 @@
 ##import RPi.GPIO as GPIO
 
-from flask import Flask, render_template, Response, redirect, url_for, request, session, abort
-from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user
+import flask
+from flask import Flask, Response, render_template, redirect, url_for, escape, request, session, abort
+from flask_login import LoginManager
+#from models import User
+import ldap_auth
+from sets import Set
+import os
+from datetime import timedelta
 
-## app config
 app = Flask(__name__)
-app.secret_key = 'FF8AAF4701FECF49B92DB6985CA2F67BF34E7B41'
 
-# flask-login
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = "login"
 
-# silly user model
-class User(UserMixin):
-    def __init__(self, id):
-        self.id = id
-        self.name = "user" + str(id)
-        self.password = self.name + "_secret"
-    def __repr__(self):
-        return "%d/%s/%s" % (self.id, self.name, self.password)
+# set sessions to timeout after 30 seconds
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+    app.permanent_session_lifetime = timedelta(seconds=30)
 
-# create some users with ids 1 to 20       
-users = [User(id) for id in range(1, 21)]
+# renew user session timeout after each request
+@app.before_request
+def renew_session():
+  session.modified = True
 
-    
-# callback to reload the user object        
-@login_manager.user_loader
-def load_user(userid):
-    return User(userid)
+# roles
+WATER_TECH_ROLE = "water"
+POWER_TECH_ROLE = "power"
+MANAGER_ROLE = "manager"
+
+user_cache = Set([])
+
+def get_user_by_username(username):
+    try:
+        for user in user_cache:
+            if user.get_id() is username:
+                return user
+            return None
+    except:
+        return None
+
 
 # Initiate GPIO
 ##GPIO.setmode(GPIO.BCM)
@@ -69,7 +81,6 @@ def water_on():
         return message
     return
 
-
 def water_off():
     global wON
     if wON:
@@ -102,107 +113,6 @@ def power_off():
         return message
     return None
 
-# error handlers
-@app.errorhandler(401)
-def page_not_found(e):
-    return Response('<p>Login failed</p>')
-
-@app.errorhandler(404)
-def page_not_found(e):
-    return Response('<p>Page not found</p>')
-
-@app.errorhandler(500)
-def page_not_found(e):
-    return Response('<p>Server error</p>')
-
-# HMI Dash/Home page
-@app.route('/')
-def hmi():
-    return render_template('home.html')
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']        
-        if password == username + "_secret":
-            id = username.split('user')[1]
-            user = User(id)
-            login_user(user)
-            return redirect(request.args.get("next"))
-        else:
-            return abort(401)
-    else:
-        return Response('''
-        <form action="" method="post">
-            <p><input type=text name=username>
-            <p><input type=password name=password>
-            <p><input type=submit value=Login>
-        </form>
-        ''')
-
-@app.route("/logout")
-@login_required
-def logout():
-    logout_user()
-    return Response('<p>Logged out</p>')
-
-# Water service HMI
-@app.route('/water')
-@login_required
-def water():
-    global wON
-    return render_template('PangeaWater.html', wON=wON)
-
-@app.route('/water/on')
-@login_required
-def WaterOn():
-    global wON
-    message = water_on()
-    return render_template('PangeaWater.html', wON=wON, message=message)
-
-@app.route('/water/off')
-@login_required
-def WaterOff():
-    global wON
-    message = water_off()
-    return render_template('PangeaWater.html', wON=wON, message=message)
-
-# Power service HMI
-@app.route('/power')
-@login_required
-def power():
-    global pON
-    return render_template('PangeaPnE.html', pON=pON)
-
-@app.route('/power/on')
-@login_required
-def poweron():
-    global pON
-    message = power_on()
-    return render_template('PangeaPnE.html', pON=pON, message=message)
-
-@app.route('/power/off')
-@login_required
-def poweroff():
-    global pON
-    message = power_off()
-    return render_template('PangeaPnE.html', pON=pON, message=message)
-
-# Kill Switch HMI
-@app.route('/killswitch')
-@login_required
-def killswitch():
-    return render_template('KillSwitch.html')
-
-@app.route('/killswitch/on')
-@login_required
-def killswitchon():
-    global ksON
-    ksON = True
-    message = KillSwitch()
-    return render_template('KillSwitch.html', message=message)
-
 # Function to turn on Kill Switch to all services
 def KillSwitch():
     global ksON
@@ -226,12 +136,133 @@ def KillSwitch():
         return message
     return None
 
-@app.route('/status')
+# error handlers
+@app.errorhandler(401)
+def page_not_found(e):
+    return render_template('401.html', session=session), 401
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html', session=session), 404
+
+@app.errorhandler(500)
+def page_not_found(e):
+    return render_template('500.html', session=session), 500
+
+@app.route('/')
 def status():
     global pON
     global wON
-    return render_template('status.html', pON=pON, wON=wON)
+    return render_template('status.html', session=session, pON=pON, wON=wON)
+
+@app.route("/login/", methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        authorized = ldap_auth.authenticate(username, password)
+        if authorized:
+            session['logged_in'] = True
+            session['username'] = escape(username)
+            session['is_watertech'] = ldap_auth.hasMembershipWithSession(username, authorized, WATER_TECH_ROLE)
+            session['is_powertech'] = ldap_auth.hasMembershipWithSession(username, authorized, POWER_TECH_ROLE)
+            session['is_manager'] = ldap_auth.hasMembershipWithSession(username, authorized, MANAGER_ROLE)
+            return redirect(url_for('home'))
+        else:
+            return render_template('401.html', session=session)
+    else:
+        return render_template('login.html', session=session)
+
+@app.route("/logout/")
+def logout():
+    if session:
+        session['logged_in'] = False
+        session['username'] = None
+        session['is_watertech'] = False
+        session['is_powertech'] = False
+        session['is_manager'] = False
+    return render_template('logout.html', session=session)
+
+# HMI Dash/Home page
+@app.route('/home')
+def home():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    else:
+        return render_template('home.html', session=session)
+
+# Water service HMI
+@app.route('/water')
+def water():
+    global wON
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    else:    
+        return render_template('PangeaWater.html', session=session, wON=wON)
+
+@app.route('/water/on')
+def WaterOn():
+    global wON
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    else:    
+        message = water_on()
+        return render_template('PangeaWater.html', session=session, wON=wON, message=message)
+
+@app.route('/water/off')
+def WaterOff():
+    global wON
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    else:    
+        message = water_off()
+        return render_template('PangeaWater.html', session=session, wON=wON, message=message)
+
+# Power service HMI
+@app.route('/power')
+def power():
+    global pON
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    else:
+        return render_template('PangeaPnE.html', session=session, pON=pON)
+
+@app.route('/power/on')
+def poweron():
+    global pON
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    else:
+        message = power_on()
+        return render_template('PangeaPnE.html', session=session, pON=pON, message=message)
+
+@app.route('/power/off')
+def poweroff():
+    global pON
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    else:
+        message = power_off()
+        return render_template('PangeaPnE.html', session=session, pON=pON, message=message)
+
+# Kill Switch HMI
+@app.route('/killswitch')
+def killswitch():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    else:
+        return render_template('KillSwitch.html', session=session)
+
+@app.route('/killswitch/on')
+def killswitchon():
+    global ksON
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    else:
+        ksON = True
+        message = KillSwitch()
+        return render_template('KillSwitch.html', session=session, message=message)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port='8080')
-##    GPIO.cleanup()
+    app.secret_key = os.urandom(12)
+    app.run(port=8080,debug=False)

@@ -3,20 +3,20 @@
 {% block content %}
     <section class="jumbotron text-xs-center">
         <div class="container">
-            <h1>Pangea Power and Water Status Pange</h1>
+            <h1>Pangea Power and Water Status</h1>
 
-            <p class="text-muted">This status page is for our valued customers to see the status of our water and power
-                systems </p>
+            <p class="text-muted">This status page is for our valued customers to see the status of our water and power.</p>
+
             <div>
                 {% if wON %}
-                    <p> Water systems are operating at max efficiency </p>
+                    <p> Water systems are operating at: <font color="green">MAXIMUM EFFICIENCY</font>.</p>
                 {% else %}
-                    <p> Water systems are currently not operating</p>
+                    <p> Water systems are currently: <font color="red">OFFLINE</font>.</p>
                 {% endif %}
                 {% if pON %}
-                    <p> Power systems are operating at max efficiency </p>
+                    <p> Power systems are operating at: <font color="green">MAXIMUM EFFICIENCY</font>.</p>
                 {% else %}
-                    <p> Power systems are currently not operating</p>
+                    <p> Power systems are currently: <font color="red">OFFLINE</font>.</p>
                 {% endif %}
 
             </div>
