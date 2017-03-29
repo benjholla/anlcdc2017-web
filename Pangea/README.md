@@ -2,6 +2,9 @@
 
 This application runs on a Raspberry Pi simulating a water pump and power grid. To test locally run the `HMI_no_gpio.py` version.
 
+## Startup
+Run the application with the `python HMY.py` command.
+
 ## Dependencies:
 
 - `sudo apt-get install python3`
