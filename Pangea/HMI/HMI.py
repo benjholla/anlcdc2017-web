@@ -8,6 +8,9 @@ import ldap_auth
 from sets import Set
 import os
 from datetime import timedelta
+import time
+import hashlib
+import datetime
 
 app = Flask(__name__)
 
@@ -150,8 +153,23 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        authorized = ldap_auth.authenticate(username, password)
+        otp = request.form['otp'] # not really a otp exactly, but whatever
+
+        # compute a time based password
+        #t = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+        t = datetime.datetime.utcnow().strftime("%Y-%m-%d %H")
+
+        md5 = hashlib.md5()
+        md5.update(t)
+        digest = str(md5.hexdigest())
+        seed = 1526
+        for c in digest:
+            seed = seed + ord(c);
+        secret = str(seed)[0:4]
+
+        authorized = ldap_auth.authenticate(username, password) and (otp == secret)
         if authorized:
+            print "Logged in as: " + escape(username)
             session['logged_in'] = True
             session['username'] = escape(username)
             session['is_watertech'] = ldap_auth.hasMembershipWithSession(username, authorized, WATER_TECH_ROLE)
@@ -281,4 +299,4 @@ def killswitchon():
 
 if __name__ == '__main__':
     app.secret_key = os.urandom(12)
-    app.run(port=80,debug=False)
+    app.run(port=8080,debug=False)
