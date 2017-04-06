@@ -17,11 +17,11 @@ app = Flask(__name__)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
-# set sessions to timeout after 30 seconds
+# set sessions to timeout after 120 seconds
 @app.before_request
 def make_session_permanent():
     session.permanent = True
-    app.permanent_session_lifetime = timedelta(seconds=30)
+    app.permanent_session_lifetime = timedelta(seconds=120)
 
 # renew user session timeout after each request
 @app.before_request
