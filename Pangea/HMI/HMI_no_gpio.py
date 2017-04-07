@@ -298,6 +298,6 @@ def killswitchon():
             return render_template('KillSwitch.html', session=session, message=message)
 
 if __name__ == '__main__':
-##    GPIO.cleanup()
     app.secret_key = os.urandom(12)
     app.run(port=8080,debug=False)
+##    GPIO.cleanup()
